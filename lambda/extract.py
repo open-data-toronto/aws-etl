@@ -1,14 +1,24 @@
-import os
-import time
-
 import requests
 
-def api(config):
-    now = int(round(time.time()))
-    path = f'../s3/{config["jobID"]}_raw_{now}.{config["dataType"]}'
+import util
 
+
+def api(config, details):
+    details['extract'] = {
+        'init': int(round(time.time())),
+        'logs': [],
+        'file': f'../s3/etl/{config["jobID"]}_raw_{details["start"]}.{config["dataType"]}',
+        'success': False
+    }
+
+    logs = details['extract']['logs']
+
+    # TODO: paginate data loading
+    utils.log(logs, 'fetching data from source')
     r = requests.get(**config['request'])
-    with open(path, 'wb') as f:
+
+    utils.log(logs, 'caching data to s3')
+    with open(details['extract']['file'], 'wb') as f:
         f.write(r.content)
 
-    return path
+    details['extract']['success'] = True

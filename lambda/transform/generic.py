@@ -3,12 +3,9 @@ import numpy as np
 import pandas as pd
 
 import builtins
-import csv
-import io
-import json
-import os
 
 from datetime import datetime
+
 
 def get_type(series):
     if series.name == 'geometry' and isinstance(series, gpd.GeoSeries):
@@ -33,11 +30,19 @@ def get_type(series):
         # eg. 2D series
         return 'unknown'
 
-def transform(config):
-    if 'processed' in config:
-        data = pd.read_feather(config['processed'])
+def transform(config, details):
+    if 'transform' in details:
+        data = pd.read_feather(details['transform']['file'])
+        details['transform']['file'] = f'../s3/etl/{config["jobID"]}_processed_{details["start"]}.csv'
     else:
-        _, fmt = config['raw'].split('.')
+        details['transform'] = {
+            'init': int(round(time.time())),
+            'logs': [],
+            'file': f'../s3/etl/{config["jobID"]}_processed_{details["start"]}.csv',
+            'success': False
+        }
+
+        _, fmt = details['extract']['file'].split('.')
 
         if fmt == 'json':
             data = pd.read_json(config['raw'])
@@ -61,7 +66,6 @@ def transform(config):
                 lambda x: datetime.utcfromtimestamp(x / 1000).strftime('%Y-%m-%d %H:%M:%S') if not pd.isnull(x) else None
             )
 
-    config['processed'] = config['processed'].replace('feather', 'csv')
-    data.to_csv(config['processed'], index=False)
+    data.to_csv(details['transform']['file'], index=False)
 
-    return config['processed']
+    details['transform']['success'] = True

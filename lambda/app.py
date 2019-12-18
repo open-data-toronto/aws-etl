@@ -7,43 +7,22 @@ import requests
 
 import extract
 import load
+import utils
 
 from urllib.parse import unquote, urljoin
 
-from flask import Flask, request
 
+def execute(job_id):
+    config, summary = utils.init_job(job_id)
 
-app = Flask(__name__)
+    tf = importlib.import_module(f'transform.{config["transformType"]}')
 
-
-@app.route('/extract/<job_id>', methods=['GET'])
-def dump(job_id):
-    path = os.path.join('../dynamodb', f'{job_id}.json')
-
-    with open(path, 'rb') as f:
-        config = json.load(f)
-
-    config['raw'] = getattr(extract, config['extractType'])(config)
-
-    with open(path, 'w') as f:
-        json.dump(config, f)
-
-    return build_response(200)
-
-@app.route('/transform/<job_id>', methods=['GET'])
-def transform(job_id):
-    path = os.path.join('../dynamodb', f'{job_id}.json')
-
-    with open(path, 'rb') as f:
-        config = json.load(f)
-
-    func = importlib.import_module(f'transform.{config["transformType"]}')
-    config['processed'] = func.transform(config)
-
-    with open(path, 'w') as f:
-        json.dump(config, f)
-
-    return build_response(200)
+    logs = summary[0]
+    try:
+        getattr(extract, config['extractType'])(config, logs)
+        tf.transform(config, logs)
+    except:
+        utils.save_logs(summary)
 
 # def lambda_handler(event, context):
 #     try:
@@ -75,6 +54,3 @@ def build_response(code, message=''):
         response['body'] = message
 
     return response
-
-if __name__ == "__main__":
-    app.run(debug=True)
