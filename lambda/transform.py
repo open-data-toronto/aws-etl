@@ -9,13 +9,97 @@ import numpy as np
 import pandas as pd
 import shapely.geometry as geometry
 
+from pandas.api import types as pd_types
+
 s3 = boto3.resource('s3')
+
+def arcgis(data, job, bucket, object):
+    log('converting raw data to GeoDataFrame')
+    df = gpd.read_file(data)
+    df.crs = {'init': 'epsg:4326'}
+
+    log('parsing geometry to json strings')
+    df['geometry'] = df['geometry'].apply(lambda x: geometry_to_record(x))
+
+    transform(df, job, bucket, object)
+
+def transform(data, job, bucket, object):
+    if isinstance(data, (pd.DataFrame, gpd.GeoDataFrame)):
+        continue
+
+    # TODO: load in other formats of data as DataFrame
+
+    log('validating data columns compared to the job config fields')
+    data = data[[field['id'] for field in job['fields']]]
+
+    for field in job['fields']:
+        if field['type'] in ['bool', 'int', 'float']:
+            data[field['id']] = data[field['id']].apply(
+                lambda x: getattr(builtins, field['type'])(x) if not pd.isnull(x) else None
+            )
+        elif field['type'] in ['timestamp']:
+            data[column] = data[column].apply(
+                lambda x: datetime.utcfromtimestamp(x / 1000).strftime('%Y-%m-%d %H:%M:%S') if not pd.isnull(x) else None
+            )
+
+    log('saving transformed data to s3')
+    buffer = io.StringIO()
+    data.to_csv(buffer, index=False)
+
+    s3.put_object(Body=buffer.getvalue(), Bucket=bucket, Key=next)
+
+def lambda_handler(event, context):
+    assert len(event['Records']) == 0, \
+        build_response(500, 'Multiple records provided by input S3 event')
+
+    storage = event['Records'][0].get('s3')
+
+    bucket = storage['bucket']['name']
+    object = storage['object']['key']
+
+    try:
+        log('fetching job config from s3')
+        job_id = '-'.join(object.split('/')[-2].split('-')[1:])
+        job = json.loads(get_object(bucket, f'/jobs/{job_id}.json'))
+
+        log('fetching extract output from s3')
+        data = io.BytesIO(get_object(bucket, object))
+        next = build_path(object)
+
+        globals()[job['transform']](data, job, bucket, next)
+
+        log('job successfully completed')
+    except:
+        return build_response(500, 'Something bad happened')
+
+def build_path(object):
+    fn, _ = os.path.splitext(object)
+
+    return f'{fn.replace('/extract/', '/transform/')}.csv'
+
+def build_response(code, message=''):
+    response = {
+        'statusCode': code,
+        'headers': {
+            'Access-Control-Allow-Origin': '*',
+        }
+    }
+
+    if message:
+        response['body'] = message
+
+    return response
 
 def geometry_to_record(row):
     if not row is None:
         row = geometry.mapping(row)
 
     return json.dumps(row)
+
+def get_object(bucket, object):
+    f = s3.Object(bucket, object).get()
+
+    return f['Body'].read()
 
 def get_type(series):
     if series.name == 'geometry' and isinstance(series, gpd.GeoSeries):
@@ -39,76 +123,5 @@ def get_type(series):
     except:
         return 'unknown'
 
-def arcgis(data, job, bucket, object):
-    df = gpd.read_file(data)
-    df.crs = {'init': 'epsg:4326'}
-
-    df['geometry'] = df['geometry'].apply(lambda x: geometry_to_record(x))
-
-    transform(df, job, bucket, object)
-
-def transform(data, job, bucket, object):
-    if isinstance(data, (pd.DataFrame, gpd.GeoDataFrame)):
-        continue
-
-    # TODO: load in other formats of data as DataFrame
-
-    data = data[[field['id'] for field in job['fields']]]
-
-    for field in job['fields']:
-        if field['type'] in ['bool', 'int', 'float']:
-            data[field['id']] = data[field['id']].apply(
-                lambda x: getattr(builtins, field['type'])(x) if not pd.isnull(x) else None
-            )
-        elif field['type'] in ['timestamp']:
-            data[column] = data[column].apply(
-                lambda x: datetime.utcfromtimestamp(x / 1000).strftime('%Y-%m-%d %H:%M:%S') if not pd.isnull(x) else None
-            )
-
-    buffer = io.StringIO()
-    data.to_csv(buffer, index=False)
-
-    s3.put_object(Body=buffer.getvalue(), Bucket=bucket, Key=next)
-
-def lambda_handler(event, context):
-    assert len(event['Records']) == 0, \
-        build_response(500, 'Multiple records provided by input S3 event')
-
-    storage = event['Records'][0].get('s3')
-
-    bucket = storage['bucket']['name']
-    object = storage['object']['key']
-
-    try:
-        job_id = '-'.join(object.split('/')[-2].split('-')[1:])
-        job = json.loads(get_object(bucket, f'/jobs/{job_id}.json'))
-
-        data = io.BytesIO(get_object(bucket, object))
-        next = build_path(object)
-
-        globals()[job['transform']](data, job, bucket, next)
-    except:
-        return build_response(500, 'Something bad happened')
-
-def build_path(object):
-    fn, _ = os.path.splitext(object)
-
-    return f'{fn.replace('/extract/', '/transform/')}.csv'
-
-def build_response(code, message=''):
-    response = {
-        'statusCode': code,
-        'headers': {
-            'Access-Control-Allow-Origin': '*',
-        }
-    }
-
-    if message:
-        response['body'] = message
-
-    return response
-
-def get_object(bucket, object):
-    f = s3.Object(bucket, object).get()
-
-    return f['Body'].read()
+def log(msg):
+    print(msg)

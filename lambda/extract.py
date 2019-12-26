@@ -16,8 +16,10 @@ def lambda_handler(event, context):
     object = storage['object']['key']
 
     try:
+        log('fetching the job config from s3')
         job = json.loads(get_object(bucket, object))
         output, next = build_paths(object, job['dataType'])
+        log(f'function will produce {output} on complete')
 
         globals()[job['extract']](job, bucket, output, next)
     except:
@@ -29,15 +31,22 @@ def arcgis(job, bucket, output, next):
     if not 'resultOffset' in fetch['params']:
         fetch['params']['resultOffset'] = 0
 
+    log(f'extracting data from arcgis source with offset {fetch["params"]["resultOffset"]}')
+
     r = requests.get(**fetch)
     data = json.loads(r.content)
 
     if data.get('properties', {}).get('exceededTransferLimit', False):
         fetch['params']['resultOffset'] += len(data['features'])
 
+        log(f'initializing extract job with offset {fetch["params"]["resultOffset"]} and config file {next}')
+
         s3.put_object(Body=json.dumps(job).encode(), Bucket=bucket, Key=next)
 
+    log('saving extracted data to s3')
     s3.put_object(Body=r.content, Bucket=bucket, Key=output)
+
+    log('job successfully completed')
 
 def build_paths(path, type):
     dir, f = os.path.split(path)
@@ -65,3 +74,6 @@ def get_object(bucket, object):
     f = s3.Object(bucket, object).get()
 
     return f['Body'].read()
+
+def log(msg):
+    print(msg)
