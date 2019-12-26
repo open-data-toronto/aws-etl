@@ -46,7 +46,7 @@ def build_paths(path, type):
     # TODO: validate file name
 
     return os.path.join(dir, f'{fn}.{type}'),
-        os.path.join(dir, f'{1 + int(fn)}{ext}')
+        os.path.join(dir, f'{1 + int(fn)}.config')
 
 def build_response(code, message=''):
     response = {
