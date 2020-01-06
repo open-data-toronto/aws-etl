@@ -2,12 +2,12 @@ import os
 import json
 
 import boto3
-import request
+import requests
 
 s3 = boto3.resource('s3')
 
 def lambda_handler(event, context):
-    assert len(event['Records']) == 0, \
+    assert len(event['Records']) == 1, \
         build_response(500, 'Multiple records provided by input S3 event')
 
     storage = event['Records'][0].get('s3')
@@ -18,11 +18,12 @@ def lambda_handler(event, context):
     try:
         log('fetching the job config from s3')
         job = json.loads(get_object(bucket, object))
-        output, next = build_paths(object, job['dataType'])
+        output, next = build_paths(object)
         log(f'function will produce {output} on complete')
 
         globals()[job['extract']](job, bucket, output, next)
-    except:
+    except Exception as e:
+        print(e)
         return build_response(500, 'Something bad happened')
 
 def arcgis(job, bucket, output, next):
@@ -41,21 +42,20 @@ def arcgis(job, bucket, output, next):
 
         log(f'initializing extract job with offset {fetch["params"]["resultOffset"]} and config file {next}')
 
-        s3.put_object(Body=json.dumps(job).encode(), Bucket=bucket, Key=next)
+        s3.Bucket(bucket).put_object(Body=json.dumps(job).encode(), Key=next)
 
     log('saving extracted data to s3')
-    s3.put_object(Body=r.content, Bucket=bucket, Key=output)
+    s3.Bucket(bucket).put_object(Body=r.content, Key=output)
 
     log('job successfully completed')
 
-def build_paths(path, type):
+def build_paths(path):
     dir, f = os.path.split(path)
     fn, ext = os.path.splitext(f)
 
     # TODO: validate file name
 
-    return os.path.join(dir, f'{fn}.{type}'),
-        os.path.join(dir, f'{1 + int(fn)}.config')
+    return os.path.join(dir, f'{fn}.extract'), os.path.join(dir, f'{1 + int(fn)}.config')
 
 def build_response(code, message=''):
     response = {

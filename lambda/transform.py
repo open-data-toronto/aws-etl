@@ -1,7 +1,7 @@
 import builtins
-import datatime.datetime as dt
 import io
 import json
+import os
 
 import boto3
 import geopandas as gpd
@@ -9,13 +9,15 @@ import numpy as np
 import pandas as pd
 import shapely.geometry as geometry
 
+from datetime import datetime as dt
+
 from pandas.api import types as pd_types
 
 s3 = boto3.resource('s3')
 
 def arcgis(data, job, bucket, object):
     log('converting raw data to GeoDataFrame')
-    df = gpd.read_file(data)
+    df = gpd.GeoDataFrame.from_features(data['features'])
     df.crs = {'init': 'epsg:4326'}
 
     log('parsing geometry to json strings')
@@ -25,7 +27,7 @@ def arcgis(data, job, bucket, object):
 
 def transform(data, job, bucket, object):
     if isinstance(data, (pd.DataFrame, gpd.GeoDataFrame)):
-        continue
+        pass
 
     # TODO: load in other formats of data as DataFrame
 
@@ -46,10 +48,10 @@ def transform(data, job, bucket, object):
     buffer = io.StringIO()
     data.to_csv(buffer, index=False)
 
-    s3.put_object(Body=buffer.getvalue(), Bucket=bucket, Key=next)
+    s3.Bucket(bucket).put_object(Body=buffer.getvalue(), Key=object)
 
 def lambda_handler(event, context):
-    assert len(event['Records']) == 0, \
+    assert len(event['Records']) == 1, \
         build_response(500, 'Multiple records provided by input S3 event')
 
     storage = event['Records'][0].get('s3')
@@ -59,23 +61,24 @@ def lambda_handler(event, context):
 
     try:
         log('fetching job config from s3')
-        job_id = '-'.join(object.split('/')[-2].split('-')[1:])
-        job = json.loads(get_object(bucket, f'/jobs/{job_id}.json'))
+        job_id = '-'.join(object.split('/')[-2].split('-')[3:])
+        job = json.loads(get_object(bucket, f'jobs/{job_id}.json'))
 
         log('fetching extract output from s3')
-        data = io.BytesIO(get_object(bucket, object))
+        data = json.loads(get_object(bucket, object))
         next = build_path(object)
 
         globals()[job['transform']](data, job, bucket, next)
 
         log('job successfully completed')
-    except:
+    except Exception as e:
+        print(e)
         return build_response(500, 'Something bad happened')
 
 def build_path(object):
     fn, _ = os.path.splitext(object)
 
-    return f'{fn.replace('/extract/', '/transform/')}.csv'
+    return f'{fn.replace("extract/", "transform/")}.csv'
 
 def build_response(code, message=''):
     response = {
@@ -97,7 +100,7 @@ def geometry_to_record(row):
     return json.dumps(row)
 
 def get_object(bucket, object):
-    f = s3.Object(bucket, object).get()
+    f = s3.Bucket(bucket).Object(object).get()
 
     return f['Body'].read()
 
