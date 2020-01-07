@@ -1,8 +1,15 @@
+# Lambda function to extract data from a source
+# Trigger: S3 object that ends with .config
+
 import os
 import json
+import logging
 
 import boto3
 import requests
+
+logger = logging.getLogger()
+logger.setLevel(logging.INFO)
 
 s3 = boto3.resource('s3')
 
@@ -13,18 +20,23 @@ def lambda_handler(event, context):
     storage = event['Records'][0].get('s3')
 
     bucket = storage['bucket']['name']
-    object = storage['object']['key']
+    object = storage['object']['key'] # file that triggered function (ending with .config)
 
     try:
         log('fetching the job config from s3')
-        job = json.loads(get_object(bucket, object))
+        config = get_object(bucket, object)
+
         output, next = build_paths(object)
         log(f'function will produce {output} on complete')
 
-        globals()[job['extract']](job, bucket, output, next)
+        log(f'starting extract for {config["extract"]}')
+        globals()[config['extract']](config, bucket, output, next)
+
+        build_response(200, 'data extracted successfully from source')
     except Exception as e:
-        print(e)
-        return build_response(500, 'Something bad happened')
+        return build_response(500, e)
+
+# Extract functions
 
 def arcgis(job, bucket, output, next):
     fetch = job['request']
@@ -39,21 +51,18 @@ def arcgis(job, bucket, output, next):
 
     if data.get('properties', {}).get('exceededTransferLimit', False):
         fetch['params']['resultOffset'] += len(data['features'])
-
-        log(f'initializing extract job with offset {fetch["params"]["resultOffset"]} and config file {next}')
+        log(f'initializing next extract pagination with offset {fetch["params"]["resultOffset"]} and config file {next}')
 
         s3.Bucket(bucket).put_object(Body=json.dumps(job).encode(), Key=next)
 
     log('saving extracted data to s3')
     s3.Bucket(bucket).put_object(Body=r.content, Key=output)
 
-    log('job successfully completed')
+# Utilities functions
 
 def build_paths(path):
     dir, f = os.path.split(path)
     fn, ext = os.path.splitext(f)
-
-    # TODO: validate file name
 
     return os.path.join(dir, f'{fn}.extract'), os.path.join(dir, f'{1 + int(fn)}.config')
 
@@ -71,9 +80,9 @@ def build_response(code, message=''):
     return response
 
 def get_object(bucket, object):
-    f = s3.Object(bucket, object).get()
+    f = s3.Bucket(bucket).Object(object).get()
 
-    return f['Body'].read()
+    return json.loads(f['Body'].read())
 
 def log(msg):
-    print(msg)
+    logging.info(msg)
