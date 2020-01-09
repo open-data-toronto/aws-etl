@@ -5,8 +5,6 @@ import axios from 'axios';
 
 import { Button, Container, Divider, Form, Header, Input, Message, Segment, Select, TextArea } from 'semantic-ui-react'
 
-//TODO: dropdown requires 2 clicks to change
-
 class Job extends React.Component {
   constructor(props) {
     super(props);
@@ -54,8 +52,11 @@ class Job extends React.Component {
         { key: 'timestamp', text: 'timestamp', value: 'timestamp' }
       ]
     }
+  }
 
-
+  dropdownChange = (event, result) => {
+    const { name, value } = result || event.target;
+    this.setState({ [name]: value });
   }
 
   addField = () => {
@@ -97,31 +98,34 @@ class Job extends React.Component {
           <Form.Group widths='equal'>
             <Form.Field required
               id='form-select-extract-type'
+              name='extract'
               control={Select}
               options={this.options.extract}
               label={{ children: 'Source system', htmlFor: 'form-select-extract-type' }}
               placeholder='eg. ArcGIS'
               value={ this.state.extract }
-              onChange={ (e) => this.setState({ 'extract': e.target.value }) }
+              onChange={ this.dropdownChange }
             />
             <Form.Field required
               id='form-select-transform-type'
+              name='transform'
               control={Select}
               options={this.options.transform}
               label={{ children: 'Processing', htmlFor: 'form-select-transform-type' }}
               placeholder='eg. data type validation'
               value={ this.state.transform }
-              onChange={ (e) => this.setState({ 'transform': e.target.value }) }
+              onChange={ this.dropdownChange }
             />
           </Form.Group>
           <Form.Field required
             id='form-textarea-extract-parameters'
+            name='extractParams'
             control={TextArea}
             label='Extract parameters'
             placeholder='eg. SQL query for databases or request parameters for API sources'
             error={ this.state.accessError }
             value={ this.state.extractParams }
-            onChange={ (e) => this.setState({ 'extractParams': e.target.value }) }
+            onChange={ this.dropdownChange }
           />
           <Form.Field required
             id='form-input-cron'
@@ -143,7 +147,7 @@ class Job extends React.Component {
                     value={ f.id }
                     onChange={ (e) =>
                       this.setState({
-                        'fields': update(this.state.fields, {[ i ]: {id: {$set: e.target.value}}})
+                        'fields': update(this.state.fields, { [ i ]: { id: { $set: e.target.value } } })
                       })
                     }
                   />
@@ -152,9 +156,12 @@ class Job extends React.Component {
                     options={this.options.dataTypes}
                     placeholder='Data type'
                     value={ f.type }
-                    onChange={ (e) =>
+                    onChange={ (event, result) =>
                       this.setState({
-                        'fields': update(this.state.fields, {[ i ]: {type: {$set: e.target.value}}})
+                        'fields': update(
+                          this.state.fields,
+                          { [ i ]: { type: { $set: result.value } } }
+                        )
                       })
                     }
                   />
@@ -164,7 +171,7 @@ class Job extends React.Component {
                     value={ f.description }
                     onChange={ (e) =>
                       this.setState({
-                        'fields': update(this.state.fields, {[ i ]: {description: {$set: e.target.value}}})
+                        'fields': update(this.state.fields, { [ i ]: { description: { $set: e.target.value } } })
                       })
                     }
                   />
