@@ -16,13 +16,12 @@ class Job extends React.Component {
       text: params.id ? 'Update existing extract' : 'Configure new extract'
     }
 
-    this.job = params.id;
-
     this.state = {
-      dataset: '',
+      id: params.id,
       extract: '',
       transform: '',
-      extractParams: '',
+      load: 'load',
+      request: '',
       cron: '',
       fields: [{
         id: '',
@@ -44,7 +43,7 @@ class Job extends React.Component {
       transform: [
         { key: 'basic', text: 'Basic (field type validation ONLY)', value: 'transform' }
       ],
-      dataTypes: [
+      fieldTypes: [
         { key: 'bool', text: 'boolean', value: 'bool' },
         { key: 'int', text: 'integer', value: 'int' },
         { key: 'float', text: 'float', value: 'float' },
@@ -89,11 +88,12 @@ class Job extends React.Component {
         <Form>
           <Form.Field required
             id='form-input-dataset-name'
+            name='id'
             control={Input}
             label='Dataset name'
             placeholder='City Wards'
-            value={ this.state.dataset }
-            onChange={ (e) => this.setState({ 'dataset': e.target.value }) }
+            value={ this.state.id }
+            onChange={ (e) => this.setState({ 'id': e.target.value }) }
           />
           <Form.Group widths='equal'>
             <Form.Field required
@@ -119,16 +119,17 @@ class Job extends React.Component {
           </Form.Group>
           <Form.Field required
             id='form-textarea-extract-parameters'
-            name='extractParams'
+            name='request'
             control={TextArea}
             label='Extract parameters'
             placeholder='eg. SQL query for databases or request parameters for API sources'
             error={ this.state.accessError }
-            value={ this.state.extractParams }
+            value={ this.state.request }
             onChange={ this.dropdownChange }
           />
           <Form.Field required
             id='form-input-cron'
+            name='cron'
             control={Input}
             label='Cron schedule'
             placeholder='0 0 * * *'
@@ -142,7 +143,8 @@ class Job extends React.Component {
               this.state.fields.map((f, i) => (
                 <Form.Group widths='equal' key={ i }>
                   <Form.Field
-                    control={Input}
+                    control={ Input }
+                    name={ `id-${i}` }
                     placeholder='Field name'
                     value={ f.id }
                     onChange={ (e) =>
@@ -152,8 +154,9 @@ class Job extends React.Component {
                     }
                   />
                   <Form.Field
-                    control={Select}
-                    options={this.options.dataTypes}
+                    control={ Select }
+                    name={ `type-${i}` }
+                    options={ this.options.fieldTypes }
                     placeholder='Data type'
                     value={ f.type }
                     onChange={ (event, result) =>
@@ -166,7 +169,8 @@ class Job extends React.Component {
                     }
                   />
                   <Form.Field
-                    control={Input}
+                    control={ Input }
+                    name={ `description-${i}` }
                     placeholder='Descriptions'
                     value={ f.description }
                     onChange={ (e) =>
