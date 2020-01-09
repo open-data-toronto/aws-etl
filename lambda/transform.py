@@ -38,7 +38,7 @@ def lambda_handler(event, context):
         log('fetching job config from s3')
         config = get_object(
             CONFIG_BUCKET,
-            f'{"-".join(object.split("/")[-2].split("-")[3:])}.json'
+            f'{"-".join(object.split("/")[-2].split("-")[3:])}.json' # TODO: does this still work??
         )
 
         log('fetching extract output from s3')

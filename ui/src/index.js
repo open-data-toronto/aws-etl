@@ -1,24 +1,34 @@
 import React from 'react';
 import ReactDOM from 'react-dom';
-import { Route, BrowserRouter as Router } from 'react-router-dom'
 
-import './index.css';
+import * as serviceWorker from './serviceWorker';
+
 import 'semantic-ui-css/semantic.min.css';
+import './index.css';
+
+import { Route, Link, BrowserRouter as Router, Switch } from 'react-router-dom';
+import { Menu } from 'semantic-ui-react';
 
 import App from './App';
 import Job from './Job';
-import NavBar from './NavBar';
-
-import * as serviceWorker from './serviceWorker';
+import NotFound from './404';
 
 const routing = (
   <Router>
     <div>
-      <header>
-        <NavBar />
-      </header>
-      <Route exact path="/" component={App} />
-      <Route path="/job" component={Job} />
+      <Menu>
+        <Menu.Item>
+          ICON
+        </Menu.Item>
+        <Menu.Item header>
+          <Link to="/">Home</Link>
+        </Menu.Item>
+      </Menu>
+      <Switch>
+        <Route exact path="/" component={App} />
+        <Route path="/job/:id?" component={Job} />
+        <Route component={NotFound} />
+      </Switch>
     </div>
   </Router>
 )
