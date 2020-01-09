@@ -1,33 +1,43 @@
 # Lambda function to build scheduler as a AWS CloudWatch Event rule
-# Trigger: API Gateway with job (package_id) and cron with query parameters
+# Trigger: API Gateway POST request with job config
+
+import json
 
 import boto3
 
 cw = boto3.client('events')
+s3 = boto3.resource('s3')
 
-aws_role = ''
-aws_lambda = ''
+BUCKET_CONFIG = 'aws-od-configs'
+
+LAMBDA_ROLE = ''
+LAMBDA_TRIGGER = ''
 
 def lambda_handler(event, context):
     try:
-        params = event['queryStringParameters']
+        config = json.loads(event['body'])
+        job_id = config.get('id')
 
-        job = params.get('job')
-        cron = params.get('cron')
+        s3.Bucket(
+            BUCKET_CONFIG
+        ).put_object(
+            Body=event['body'].encode(),
+            Key=f'${job_id}.json'
+        )
 
         rule = cw.put_rule(
-            Name=job,
-            ScheduleExpression=f'cron({cron})',
-            EventPattern='string',
+            Name=job_id,
+            ScheduleExpression=f'cron({config.get("cron")})',
             State='ENABLED',
-            RoleArn=aws_role
+            RoleArn=LAMBDA_ROLE
         )
 
         target = cw.put_targets(
-            Rule=job,
+            Rule=job_id,
             Targets=[{
-                'Arn': aws_lambda,
+                'Arn': LAMBDA_TRIGGER,
                 'Id': 'InitPipelineJob', # ID of the target for this specific rule
+                'Input': json.dumps({'id': job_id})
             }]
         )
 
@@ -39,7 +49,7 @@ def build_response(code, message=''):
     response = {
         'statusCode': code,
         'headers': {
-            'Access-Control-Allow-Origin': '*',
+            'Access-Control-Allow-Origin': '*'
         }
     }
 

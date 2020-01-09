@@ -5,6 +5,8 @@ import axios from 'axios';
 
 import { Button, Container, Divider, Form, Header, Input, Message, Segment, Select, TextArea } from 'semantic-ui-react'
 
+// TODO: checkout later.js for cron expression calculation
+
 class Job extends React.Component {
   constructor(props) {
     super(props);
@@ -17,7 +19,7 @@ class Job extends React.Component {
     }
 
     this.state = {
-      id: params.id,
+      id: params.id || '',
       extract: '',
       transform: '',
       load: 'load',
@@ -29,11 +31,11 @@ class Job extends React.Component {
         description: '',
         error: false
       }],
-      nameError: false,
-      extractError: false,
-      transformError: false,
-      accessError: false,
-      fieldError: false
+      _mode: params.id ? 'update' : 'create',
+      _nameError: false,
+      _cronError: false,
+      _requestError: false,
+      _fieldError: false
     }
 
     this.options = {
@@ -41,7 +43,8 @@ class Job extends React.Component {
         { key: 'arcgis', text: 'ArcGIS', value: 'arcgis' }
       ],
       transform: [
-        { key: 'basic', text: 'Basic (field type validation ONLY)', value: 'transform' }
+        { key: 'basic', text: 'Basic (field type validation ONLY)', value: 'transform' },
+        { key: 'arcgis', text: 'ArcGIS (projection validations)', value: 'arcgis'}
       ],
       fieldTypes: [
         { key: 'bool', text: 'boolean', value: 'bool' },
@@ -51,14 +54,22 @@ class Job extends React.Component {
         { key: 'timestamp', text: 'timestamp', value: 'timestamp' }
       ]
     }
+
+    if (params.id) {
+      this.fetch(params.id);
+    }
   }
+
+  cronRegEx = new RegExp(/^(\*|([0-9]|1[0-9]|2[0-9]|3[0-9]|4[0-9]|5[0-9])|\*\/([0-9]|1[0-9]|2[0-9]|3[0-9]|4[0-9]|5[0-9])) (\*|([0-9]|1[0-9]|2[0-3])|\*\/([0-9]|1[0-9]|2[0-3])) (\*|([1-9]|1[0-9]|2[0-9]|3[0-1])|\*\/([1-9]|1[0-9]|2[0-9]|3[0-1])) (\*|([1-9]|1[0-2])|\*\/([1-9]|1[0-2])) (\*|([0-6])|\*\/([0-6]))$/);
 
   dropdownChange = (event, result) => {
     const { name, value } = result || event.target;
     this.setState({ [name]: value });
   }
 
-  addField = () => {
+  addField = (event) => {
+    event.preventDefault();
+
     this.setState({
       fields: this.state.fields.concat([{
         'id': '',
@@ -68,16 +79,77 @@ class Job extends React.Component {
     });
   }
 
-  generateFields = () => {
+  generateFields = (event) => {
+    event.preventDefault();
     // axios fetch source content
   }
 
-  fetch = () => {
-    // axios fetch existing job schedule and config file
+  fetch = async (id) => {
+    await axios.get(
+      process.env.REACT_APP_JOB_SHOW,
+      {
+        params: {
+          id: id
+        }
+      }
+    ).then(response => {
+      if (typeof(response.data.request) === 'object') {
+        response.data.request = JSON.stringify(response.data.request, null, 2);
+      }
+
+      this.setState(response.data);
+    })
   }
 
-  submit = () => {
+  submit = async () => {
+    const payload = {};
 
+    let pass = true;
+    Object.entries(this.state).forEach(([key, value]) => {
+      if (key.startsWith('_')) return;
+
+      switch(key) {
+        case 'id':
+          // call ckan and see if dataset exists
+
+          payload[key] = 'test';
+          break;
+        case 'cron':
+          pass &= this.cronRegEx.test(value);
+          this.setState({ _cronError: true });
+
+          payload[key] = value;
+          break;
+        case 'request':
+          if (this.state.extract === 'arcgis') {
+            try {
+              payload[key] = JSON.parse(this.state.request);
+            } catch {
+              pass = false;
+              this.setState({ _requestError: false });
+            }
+          }
+          break;
+        default:
+          payload[key] = value;
+      }
+    });
+    console.log(pass)
+    if (pass) {
+      console.log(process.env.REACT_APP_JOB_SUBMIT)
+      await axios.post(
+        process.env.REACT_APP_JOB_SUBMIT,
+        JSON.stringify(payload),
+        {
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded'
+          }
+        }
+      ).then((response) => {
+        console.log(response)
+        // window.location.href = '/';
+      });
+    }
   }
 
   render() {
@@ -92,6 +164,7 @@ class Job extends React.Component {
             control={Input}
             label='Dataset name'
             placeholder='City Wards'
+            disabled={ this.state._mode === 'update' }
             value={ this.state.id }
             onChange={ (e) => this.setState({ 'id': e.target.value }) }
           />
@@ -123,7 +196,7 @@ class Job extends React.Component {
             control={TextArea}
             label='Extract parameters'
             placeholder='eg. SQL query for databases or request parameters for API sources'
-            error={ this.state.accessError }
+            error={ this.state._requestError }
             value={ this.state.request }
             onChange={ this.dropdownChange }
           />
@@ -138,7 +211,7 @@ class Job extends React.Component {
           />
           <Segment>
             <h5>Data dictionary</h5>
-            <Message negative header='Invalid field(s) provided' content='please provide both field name and data type' hidden={ !this.state.fieldError }/>
+            <Message negative header='Invalid field(s) provided' content='please provide both field name and data type' hidden={ !this.state._fieldError }/>
             {
               this.state.fields.map((f, i) => (
                 <Form.Group widths='equal' key={ i }>
@@ -183,14 +256,14 @@ class Job extends React.Component {
               ))
             }
             <div>
-              <Button content='Fetch fields' onClick={ () => this.generateFields() } />
-              <Button icon='plus' onClick={ () => this.addField() } />
+              <Button content='Fetch fields' onClick={ this.generateFields } />
+              <Button icon='plus' onClick={ this.addField } />
             </div>
           </Segment>
           <Form.Field control={Button} positive onClick={ () => this.submit() }>Submit</Form.Field>
         </Form>
       </Container>
-    )
+    );
   }
 }
 

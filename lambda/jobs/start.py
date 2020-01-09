@@ -7,17 +7,17 @@ from datetime import datetime as dt
 
 s3 = boto3.resource('s3')
 
-CONFIG_BUCKET = 'aws-od-configs'
-PIPELINE_BUCKET = 'aws-od-pipelines'
+BUCKET_CONFIG = 'aws-od-configs'
+BUCKET_PIPELINE = 'aws-od-pipelines'
 
 def lambda_handler(event, context):
     try:
         s3.meta.client.copy_object(
             CopySource={
-                'Bucket': CONFIG_BUCKET,
+                'Bucket': BUCKET_CONFIG,
                 'Key': f'{event["job"]}.json'
             },
-            Bucket=PIPELINE_BUCKET,
+            Bucket=BUCKET_PIPELINE,
             Key=f'{event["job"]}/{dt.now().isoformat()}/0.config'
         )
 
