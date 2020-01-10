@@ -54,14 +54,14 @@ class App extends React.Component {
     return (
       <Container>
         <Segment>
-          <Table definition striped>
+          <Table striped basic>
             <Table.Header>
               <Table.Row>
-                <Table.HeaderCell />
+                <Table.HeaderCell>Status</Table.HeaderCell>
                 <Table.HeaderCell>Name</Table.HeaderCell>
                 <Table.HeaderCell>Schedule</Table.HeaderCell>
                 <Table.HeaderCell>Last 5 Run Status</Table.HeaderCell>
-                <Table.HeaderCell>Next Execution Time</Table.HeaderCell>
+                <Table.HeaderCell>Next Run</Table.HeaderCell>
                 <Table.HeaderCell textAlign='center'>Run Once</Table.HeaderCell>
                 <Table.HeaderCell textAlign='center'>Configure</Table.HeaderCell>
                 <Table.HeaderCell textAlign='center'>Delete</Table.HeaderCell>
