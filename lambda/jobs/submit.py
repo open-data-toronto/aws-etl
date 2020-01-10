@@ -22,7 +22,7 @@ def lambda_handler(event, context):
             BUCKET_CONFIG
         ).put_object(
             Body=event['body'].encode(),
-            Key=f'${job_id}.json'
+            Key=f'{job_id}.json'
         )
 
         rule = cw.put_rule(

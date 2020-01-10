@@ -91,11 +91,13 @@ class Job extends React.Component {
         }
       }
     ).then(response => {
-      if (typeof(response.data.request) === 'object') {
-        response.data.request = JSON.stringify(response.data.request, null, 2);
+      const data = JSON.parse(response.data);
+
+      if (typeof(data.request) === 'object') {
+        data.request = JSON.stringify(data.request, null, 2);
       }
 
-      this.setState(response.data);
+      this.setState(data);
     });
   }
 
