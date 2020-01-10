@@ -7,7 +7,7 @@ import 'semantic-ui-css/semantic.min.css';
 import './index.css';
 
 import { Route, Link, BrowserRouter as Router, Switch } from 'react-router-dom';
-import { Menu } from 'semantic-ui-react';
+import { Image, Menu } from 'semantic-ui-react';
 
 import App from './App';
 import Job from './Job';
@@ -18,7 +18,7 @@ const routing = (
     <div>
       <Menu>
         <Menu.Item>
-          ICON
+          <Image src={'../logo.svg'} size='mini' />
         </Menu.Item>
         <Menu.Item header>
           <Link to="/">Home</Link>

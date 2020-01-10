@@ -3,7 +3,7 @@ import update from 'immutability-helper';
 
 import axios from 'axios';
 
-import { Button, Container, Divider, Form, Header, Input, Message, Segment, Select, TextArea } from 'semantic-ui-react'
+import { Button, Container, Divider, Form, Header, Input, Message, Segment, Select, TextArea } from 'semantic-ui-react';
 
 // TODO: checkout later.js for cron expression calculation
 
@@ -96,7 +96,7 @@ class Job extends React.Component {
       }
 
       this.setState(response.data);
-    })
+    });
   }
 
   submit = async () => {
@@ -127,6 +127,8 @@ class Job extends React.Component {
               this.setState({ _requestError: false });
             }
           }
+          break;
+        default:
           break;
       }
 
