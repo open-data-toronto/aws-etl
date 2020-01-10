@@ -84,10 +84,10 @@ class App extends React.Component {
                     <Table.Cell>WIP</Table.Cell>
                     <Table.Cell>WIP</Table.Cell>
                     <Table.Cell textAlign='center'>
-                    <Button icon color='green' onClick={ () => window.location.href = `/job/${job.name}` }><Icon name='shipping fast' /></Button>
+                    <Button icon color='blue' onClick={ () => window.location.href = `/job/${job.name}` }><Icon name='arrow right' /></Button>
                     </Table.Cell>
                     <Table.Cell textAlign='center'>
-                      <Button icon color='blue' onClick={ () => window.location.href = `/job/${job.name}` }><Icon name='sliders horizontal' /></Button>
+                      <Button icon color='violet' onClick={ () => window.location.href = `/job/${job.name}` }><Icon name='sliders horizontal' /></Button>
                     </Table.Cell>
                     <Table.Cell textAlign='center'>
                       <Button icon color='red'><Icon name='trash' /></Button>
