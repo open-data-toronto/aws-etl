@@ -34,8 +34,6 @@ class App extends React.Component {
         });
 
       this.setState({ 'rules': rules });
-
-      console.log(this.state)
     }).catch(e => {
       console.log(`ERROR: ${e}`);
     });
