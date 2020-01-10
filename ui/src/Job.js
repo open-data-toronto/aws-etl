@@ -60,8 +60,6 @@ class Job extends React.Component {
     }
   }
 
-  cronRegEx = new RegExp(/^(\*|([0-9]|1[0-9]|2[0-9]|3[0-9]|4[0-9]|5[0-9])|\*\/([0-9]|1[0-9]|2[0-9]|3[0-9]|4[0-9]|5[0-9])) (\*|([0-9]|1[0-9]|2[0-3])|\*\/([0-9]|1[0-9]|2[0-3])) (\*|([1-9]|1[0-9]|2[0-9]|3[0-1])|\*\/([1-9]|1[0-9]|2[0-9]|3[0-1])) (\*|([1-9]|1[0-2])|\*\/([1-9]|1[0-2])) (\*|([0-6])|\*\/([0-6]))$/);
-
   dropdownChange = (event, result) => {
     const { name, value } = result || event.target;
     this.setState({ [name]: value });
@@ -109,34 +107,33 @@ class Job extends React.Component {
       if (key.startsWith('_')) return;
 
       switch(key) {
-        case 'id':
-          // call ckan and see if dataset exists
-
-          payload[key] = 'test';
-          break;
-        case 'cron':
-          pass &= this.cronRegEx.test(value);
-          this.setState({ _cronError: true });
-
-          payload[key] = value;
-          break;
+        // case 'id':
+        //   // call ckan and see if dataset exists
+        //
+        //   payload[key] = value;
+        //   break;
+        // case 'cron':
+        //   pass &= this.cronRegEx.test(value);
+        //   this.setState({ _cronError: true });
+        //
+        //   payload[key] = value;
+        //   break;
         case 'request':
           if (this.state.extract === 'arcgis') {
             try {
-              payload[key] = JSON.parse(this.state.request);
+              value = JSON.parse(this.state.request);
             } catch {
               pass = false;
               this.setState({ _requestError: false });
             }
           }
           break;
-        default:
-          payload[key] = value;
       }
+
+      payload[key] = value;
     });
-    console.log(pass)
+
     if (pass) {
-      console.log(process.env.REACT_APP_JOB_SUBMIT)
       await axios.post(
         process.env.REACT_APP_JOB_SUBMIT,
         JSON.stringify(payload),
@@ -146,8 +143,7 @@ class Job extends React.Component {
           }
         }
       ).then((response) => {
-        console.log(response)
-        // window.location.href = '/';
+        window.location.href = '/';
       });
     }
   }

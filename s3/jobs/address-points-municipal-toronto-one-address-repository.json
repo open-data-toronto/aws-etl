@@ -1,6 +1,6 @@
 {
   "id": "address-points-municipal-toronto-one-address-repository",
-  "cron": "0 * * * *",
+  "cron": "0 * * ? * *",
   "dataType": "geojson",
   "extract": "arcgis",
   "transform": "arcgis",
