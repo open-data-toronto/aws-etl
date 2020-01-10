@@ -93,7 +93,6 @@ class App extends React.Component {
                   </Table.Row>
                 ))
               }
-
             </Table.Body>
 
             <Table.Footer fullWidth>
