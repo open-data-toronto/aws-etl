@@ -100,10 +100,10 @@ class App extends React.Component {
 
             <Table.Footer fullWidth>
               <Table.Row>
-                <Table.HeaderCell />
-                <Table.HeaderCell colSpan='7'>
-                  <Button icon labelPosition='left' color='green' onClick={ () => window.location.href = '/job' }>
-                    <Icon name='plus' /> Add Job
+                <Table.HeaderCell colSpan='7'/>
+                <Table.HeaderCell textAlign='center'>
+                  <Button icon color='green' onClick={ () => window.location.href = '/job' }>
+                    <Icon name='plus' />
                   </Button>
                 </Table.HeaderCell>
               </Table.Row>
